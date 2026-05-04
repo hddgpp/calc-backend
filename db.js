@@ -1,17 +1,25 @@
-const Database = require('better-sqlite3');
-const db = new Database('licenses.db');
+const { Pool } = require('pg');
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS licenses (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    code TEXT UNIQUE NOT NULL,
-    code_hash TEXT NOT NULL,
-    activated INTEGER DEFAULT 0,
-    machine_id TEXT,
-    activated_at TEXT,
-    expires_at TEXT,
-    created_at TEXT DEFAULT (datetime('now'))
-  );
-`);
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
 
-module.exports = db;
+async function init() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS licenses (
+      id SERIAL PRIMARY KEY,
+      code TEXT UNIQUE NOT NULL,
+      code_hash TEXT NOT NULL,
+      activated INTEGER DEFAULT 0,
+      machine_id TEXT,
+      activated_at TEXT,
+      expires_at TEXT,
+      created_at TEXT DEFAULT now()::text
+    );
+  `);
+}
+
+init().catch(console.error);
+
+module.exports = pool;
