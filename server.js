@@ -4,6 +4,7 @@ const rateLimit = require('express-rate-limit');
 const cors = require('cors');
 
 const app = express();
+app.set('trust proxy', 1);
 
 // Only allow requests from your Chrome extension
 // Chrome extensions send Origin: chrome-extension://YOUR_EXTENSION_ID
