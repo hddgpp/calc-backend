@@ -5,7 +5,6 @@ const jwt = require('jsonwebtoken');
 const db = require('../db');
 
 // POST /api/license/activate
-// Called once when user first enters their code
 router.post('/activate', (req, res) => {
   const { code, machine_id } = req.body;
 
@@ -13,7 +12,6 @@ router.post('/activate', (req, res) => {
     return res.status(400).json({ error: 'code and machine_id are required' });
   }
 
-  // Find the license row
   const license = db.prepare('SELECT * FROM licenses WHERE code = ?').get(code);
 
   if (!license) {
@@ -25,7 +23,7 @@ router.post('/activate', (req, res) => {
     return res.status(403).json({ error: 'Code already used on another device' });
   }
 
-  // Already activated by this same machine — re-issue token (e.g. extension reinstalled)
+  // Already activated by this same machine — re-issue token
   if (license.activated && license.machine_id === machine_id) {
     const expiresAt = new Date(license.expires_at);
     if (expiresAt < new Date()) {
@@ -59,11 +57,31 @@ router.post('/activate', (req, res) => {
   res.json({ token, expires_at: expiresAtStr, message: 'Activated! 30 days of access.' });
 });
 
-// POST /api/license/verify  (called on every extension startup)
+// POST /api/license/verify
 const authMiddleware = require('../middleware/auth');
 router.post('/verify', authMiddleware, (req, res) => {
-  // If we get here, the JWT was valid
   res.json({ valid: true, expires_at: req.license.expires_at });
+});
+
+// POST /api/license/admin/generate
+router.post('/admin/generate', (req, res) => {
+  const { admin_key } = req.body;
+
+  if (admin_key !== process.env.ADMIN_KEY) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  function makeCode() {
+    const seg = () => Math.random().toString(36).substring(2, 6).toUpperCase();
+    return `CALC-${seg()}-${seg()}-${seg()}`;
+  }
+
+  const code = makeCode();
+  const hash = bcrypt.hashSync(code, 10);
+
+  db.prepare('INSERT INTO licenses (code, code_hash) VALUES (?, ?)').run(code, hash);
+
+  res.json({ code });
 });
 
 module.exports = router;
