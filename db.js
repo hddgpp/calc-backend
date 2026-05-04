@@ -18,6 +18,7 @@ async function init() {
       created_at TEXT DEFAULT now()::text
     );
   `);
+  console.log('Database ready');
 }
 
 init().catch(console.error);
