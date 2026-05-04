@@ -7,11 +7,9 @@ function parseNumbers(input) {
   return matches ? matches.map(Number) : [];
 }
 
-// POST /api/calculate  — requires valid JWT
 router.post('/', authMiddleware, (req, res) => {
   const { input, machine_id } = req.body;
 
-  // Extra check: token's machine_id must match the request body
   if (req.license.machine_id !== machine_id) {
     return res.status(403).json({ error: 'Machine mismatch' });
   }
@@ -22,10 +20,6 @@ router.post('/', authMiddleware, (req, res) => {
 
   if (input.length > 2000) {
     return res.status(400).json({ error: 'Input too long' });
-  }
-
-  if (!req.body.ts || Math.abs(Date.now() - req.body.ts) > 30000) {
-    return res.status(400).json({ error: 'Request expired' });
   }
 
   const numbers = parseNumbers(input);
