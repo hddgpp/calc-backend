@@ -44,7 +44,7 @@ router.post('/activate', async (req, res) => {
     const token = jwt.sign(
       { machine_id, expires_at: expiresAtStr },
       process.env.JWT_SECRET,
-      { expiresIn: '30d' }
+      { expiresIn: '1m' }
     );
     res.json({ token, expires_at: expiresAtStr, message: 'Activated! 30 days of access.' });
   } catch (err) {
