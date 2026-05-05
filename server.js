@@ -58,7 +58,7 @@ app.use('/api/', limiter);
 
 const activateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: 50,
   skip: (req) => req.method === 'OPTIONS',
   message: { error: 'Too many activation attempts' }
 });
