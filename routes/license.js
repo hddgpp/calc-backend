@@ -16,22 +16,13 @@ router.post('/activate', async (req, res) => {
     if (!license) {
       return res.status(404).json({ error: 'Invalid license code' });
     }
-    if (license.activated && license.machine_id !== machine_id) {
-      return res.status(403).json({ error: 'Code already used on another device' });
-    }
-    if (license.activated && license.machine_id === machine_id) {
-      const expiresAt = new Date(license.expires_at);
-      if (expiresAt < new Date()) {
-        return res.status(403).json({ error: 'License expired' });
-      }
-      const token = jwt.sign(
-        { machine_id, expires_at: license.expires_at },
-        process.env.JWT_SECRET,
-        { expiresIn: Math.floor((expiresAt - Date.now()) / 1000) }
-      );
-      return res.json({ token, expires_at: license.expires_at });
+
+    // Code already used — reject no matter what
+    if (license.activated) {
+      return res.status(403).json({ error: 'This code has already been used' });
     }
 
+    // First and only activation
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30);
     const expiresAtStr = expiresAt.toISOString();
@@ -44,8 +35,9 @@ router.post('/activate', async (req, res) => {
     const token = jwt.sign(
       { machine_id, expires_at: expiresAtStr },
       process.env.JWT_SECRET,
-      { expiresIn: '30d' }
+      { expiresIn: '24h' }
     );
+
     res.json({ token, expires_at: expiresAtStr, message: 'Activated! 30 days of access.' });
   } catch (err) {
     console.error(err);
@@ -54,8 +46,38 @@ router.post('/activate', async (req, res) => {
 });
 
 const authMiddleware = require('../middleware/auth');
-router.post('/verify', authMiddleware, (req, res) => {
-  res.json({ valid: true, expires_at: req.license.expires_at });
+
+router.post('/verify', authMiddleware, async (req, res) => {
+  const { machine_id } = req.body;
+
+  if (req.license.machine_id !== machine_id) {
+    return res.status(403).json({ error: 'Machine mismatch' });
+  }
+
+  try {
+    const result = await pool.query('SELECT * FROM licenses WHERE machine_id = $1', [machine_id]);
+    const license = result.rows[0];
+
+    if (!license) {
+      return res.status(403).json({ error: 'License not found' });
+    }
+
+    const expiresAt = new Date(license.expires_at);
+    if (expiresAt < new Date()) {
+      return res.status(401).json({ error: 'License expired', expired: true });
+    }
+
+    const token = jwt.sign(
+      { machine_id, expires_at: license.expires_at },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    res.json({ valid: true, token, expires_at: license.expires_at });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
 });
 
 router.post('/admin/generate', async (req, res) => {
