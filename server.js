@@ -6,6 +6,7 @@ const app = express();
 app.set('trust proxy', 1);
 
 const EXTENSION_ID = 'chrome-extension://nbmbfahnmdcegnhkephebhopkhlnfion';
+const ALLOWED_ORIGINS = /^chrome-extension:\/\//;
 
 // Handle CORS and origin lock
 app.use((req, res, next) => {
@@ -28,14 +29,13 @@ app.use((req, res, next) => {
   }
 
   // Block all other origins
-  if (origin && origin !== EXTENSION_ID) {
-    return res.status(403).json({ error: 'Forbidden' });
-  }
+ if (origin && !ALLOWED_ORIGINS.test(origin)) {
+  return res.status(403).json({ error: 'Forbidden' });
+}
 
-  if (origin === EXTENSION_ID) {
-    res.setHeader('Access-Control-Allow-Origin', EXTENSION_ID);
-  }
-
+if (origin && ALLOWED_ORIGINS.test(origin)) {
+  res.setHeader('Access-Control-Allow-Origin', origin);
+}
   next();
 });
 
