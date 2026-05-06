@@ -13,7 +13,7 @@ app.use((req, res, next) => {
 
   // Allow preflight requests from the extension
   if (req.method === 'OPTIONS') {
-    if (!origin || origin === EXTENSION_ID) {
+    if (!origin || origin.startsWith('chrome-extension://')) {
       res.setHeader('Access-Control-Allow-Origin', origin || '*');
       res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
       res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
